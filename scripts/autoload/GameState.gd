@@ -64,6 +64,9 @@ func die(cause_id: String, message: String = "") -> void:
 	death_count_total += 1
 	death_log[cause_id] = int(death_log.get(cause_id, 0)) + 1
 	flags["died_" + cause_id] = true
+	# 復元されるのは「チェックポイント時点の状態」なので、HP/MPも巻き戻る。
+	# ここを巻き戻さないと、一度全滅した時点で以後どの戦闘も即敗北になり詰む。
+	PartyData.heal_full_party()
 	EventBus.player_died.emit(cause_id, message)
 	_retry_sequence(message)
 

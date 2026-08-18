@@ -1,37 +1,42 @@
 class_name TileGrid
 extends Node2D
-## ASCIIレイアウトからプレースホルダー描画つきのグリッドマップを構築する。
-## '#' = 壁, '.' = 床, ' ' = 何も置かない(空白)。
+## ASCIIレイアウトからドット絵タイルを敷き詰めてマップを構築する。
+##
+## tileset は 文字 -> {"art": TileArtの名前, "solid": bool, "under": 下地に敷く文字}
+## "under" を指定すると、木や柱のように「地面の上に立っている」タイルを表現できる。
 
 const TILE_SIZE := 16
 
 var solid: Dictionary = {} # Vector2i -> bool
-var _tile_rects: Dictionary = {} # Vector2i -> ColorRect
-var wall_color := Color(0.18, 0.16, 0.22)
-var floor_color := Color(0.5, 0.42, 0.28)
+var _sprites: Dictionary = {} # Vector2i -> Sprite2D
 
 
-func build(layout: PackedStringArray, p_floor_color: Color, p_wall_color: Color) -> void:
-	floor_color = p_floor_color
-	wall_color = p_wall_color
+func build(layout: PackedStringArray, tileset: Dictionary) -> void:
 	for y in layout.size():
 		var row := layout[y]
 		for x in row.length():
 			var ch := row[x]
-			if ch == " ":
+			if not tileset.has(ch):
 				continue
 			var cell := Vector2i(x, y)
-			var rect := ColorRect.new()
-			rect.size = Vector2(TILE_SIZE, TILE_SIZE)
-			rect.position = Vector2(cell) * TILE_SIZE
-			rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			if ch == "#":
-				rect.color = wall_color
+			var def: Dictionary = tileset[ch]
+
+			var under := String(def.get("under", ""))
+			if under != "" and tileset.has(under):
+				_place_sprite(cell, String(tileset[under].get("art", "")))
+
+			_sprites[cell] = _place_sprite(cell, String(def.get("art", "")))
+			if bool(def.get("solid", false)):
 				solid[cell] = true
-			else:
-				rect.color = floor_color
-			add_child(rect)
-			_tile_rects[cell] = rect
+
+
+func _place_sprite(cell: Vector2i, art_name: String) -> Sprite2D:
+	var spr := Sprite2D.new()
+	spr.texture = TileArt.get_texture(art_name)
+	spr.centered = false
+	spr.position = Vector2(cell) * TILE_SIZE
+	add_child(spr)
+	return spr
 
 
 func is_solid(cell: Vector2i) -> bool:
@@ -44,15 +49,3 @@ func set_solid(cell: Vector2i, value: bool) -> void:
 
 func cell_to_world(cell: Vector2i) -> Vector2:
 	return Vector2(cell) * TILE_SIZE + Vector2(TILE_SIZE * 0.5, TILE_SIZE * 0.5)
-
-
-func tint_cell(cell: Vector2i, color: Color) -> void:
-	if _tile_rects.has(cell):
-		(_tile_rects[cell] as ColorRect).color = color
-
-
-func reset_cell_color(cell: Vector2i) -> void:
-	if not _tile_rects.has(cell):
-		return
-	var is_wall := is_solid(cell)
-	(_tile_rects[cell] as ColorRect).color = wall_color if is_wall else floor_color

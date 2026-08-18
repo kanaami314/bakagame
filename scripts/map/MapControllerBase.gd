@@ -3,11 +3,35 @@ extends Node2D
 ## 村・ダンジョンなど「1画面マップ」の共通処理。
 ## サブクラスは _get_layout() / _get_objects() などを上書きして地形とイベントを定義する。
 ## イベント種別(objects の "type"):
-##   marker(スポーン/チェックポイント), door(扉/出口), npc, sign, chest, shop, trap_step
+##   marker(スポーン/チェックポイント), door(扉/出口), npc, sign, chest, shop, inn, trap_step
+
+const DEFAULT_TILESET := {
+	".": {"art": "grass", "solid": false},
+	",": {"art": "path", "solid": false},
+	"#": {"art": "tree", "solid": true, "under": "."},
+	"H": {"art": "house", "solid": true},
+	"D": {"art": "house_door", "solid": true},
+	"R": {"art": "roof", "solid": true},
+	"_": {"art": "floor", "solid": false},
+	"W": {"art": "wall_stone", "solid": true},
+	"P": {"art": "pillar", "solid": true, "under": "_"},
+}
+
+## 人物の見た目(服・髪の色)。objects の "look" キーで指定する。
+const LOOKS := {
+	"villager": {"tunic": Color("4aa87a"), "hair": Color("5a4030")},
+	"elder": {"tunic": Color("8a5fb0"), "hair": Color("d8d8e0")},
+	"priest": {"tunic": Color("e8e8f0"), "hair": Color("c9a24b")},
+	"merchant": {"tunic": Color("d98b3b"), "hair": Color("3a2a1e")},
+	"innkeeper": {"tunic": Color("9a6a4a"), "hair": Color("4a3020")},
+}
 
 var grid: TileGrid
 var player: PlayerController
 var objects: Dictionary = {} # Vector2i -> Dictionary
+
+var _prompt_label: Label
+var _busy: bool = false
 
 
 func _get_layout() -> PackedStringArray:
@@ -18,12 +42,8 @@ func _get_objects() -> Array:
 	return []
 
 
-func _get_floor_color() -> Color:
-	return Color(0.5, 0.42, 0.28)
-
-
-func _get_wall_color() -> Color:
-	return Color(0.18, 0.16, 0.22)
+func _get_tileset() -> Dictionary:
+	return DEFAULT_TILESET
 
 
 func _on_ready_extra() -> void:
@@ -37,13 +57,14 @@ func _ready() -> void:
 	_build_map()
 	_setup_camera()
 	_spawn_player()
+	_build_prompt()
 	_on_ready_extra()
 
 
 func _build_map() -> void:
 	grid = TileGrid.new()
 	add_child(grid)
-	grid.build(_get_layout(), _get_floor_color(), _get_wall_color())
+	grid.build(_get_layout(), _get_tileset())
 
 	objects.clear()
 	for obj in _get_objects():
@@ -51,8 +72,7 @@ func _build_map() -> void:
 		objects[cell] = obj
 		if bool(obj.get("solid", false)):
 			grid.set_solid(cell, true)
-		if String(obj.get("type", "")) in ["chest", "npc", "shop", "sign"]:
-			_spawn_marker_visual(cell, obj)
+		_spawn_object_visual(cell, obj)
 
 
 func _setup_camera() -> void:
@@ -63,23 +83,25 @@ func _setup_camera() -> void:
 	cam.make_current()
 
 
-func _spawn_marker_visual(cell: Vector2i, obj: Dictionary) -> void:
-	var vis := ColorRect.new()
-	vis.size = Vector2(10, 10)
-	vis.position = grid.cell_to_world(cell) - Vector2(5, 5)
-	vis.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	match String(obj.get("type", "")):
+func _spawn_object_visual(cell: Vector2i, obj: Dictionary) -> void:
+	var type := String(obj.get("type", ""))
+	var tex: Texture2D = null
+	match type:
 		"chest":
-			vis.color = Color(0.85, 0.7, 0.2)
-		"npc":
-			vis.color = Color(0.7, 0.5, 0.8)
-		"shop":
-			vis.color = Color(0.3, 0.8, 0.5)
+			tex = TileArt.get_texture("chest")
 		"sign":
-			vis.color = Color(0.6, 0.6, 0.6)
+			tex = TileArt.get_texture("sign")
+		"npc", "shop", "inn":
+			var look: Dictionary = LOOKS.get(String(obj.get("look", "villager")), LOOKS["villager"])
+			tex = TileArt.character("down", look["tunic"], look["hair"])
 		_:
-			vis.color = Color(1, 1, 1)
-	add_child(vis)
+			return
+
+	var spr := Sprite2D.new()
+	spr.texture = tex
+	spr.centered = true
+	spr.position = grid.cell_to_world(cell)
+	add_child(spr)
 
 
 func _spawn_player() -> void:
@@ -90,6 +112,63 @@ func _spawn_player() -> void:
 	player.moved.connect(_on_player_moved)
 	player.interact_pressed.connect(_on_player_interact)
 	_on_player_moved(spawn_cell)
+
+
+## 目の前の対象が何なのかを画面上部に出す。ドット絵だけでは伝わらない情報を補う。
+func _build_prompt() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 20
+	add_child(layer)
+
+	var bg := ColorRect.new()
+	bg.color = Color(0, 0, 0, 0.55)
+	bg.position = Vector2(0, 0)
+	bg.size = Vector2(320, 14)
+	layer.add_child(bg)
+
+	_prompt_label = Label.new()
+	_prompt_label.position = Vector2(6, 1)
+	_prompt_label.add_theme_font_size_override("font_size", 10)
+	_prompt_label.add_theme_color_override("font_color", Color(1, 0.92, 0.6))
+	layer.add_child(_prompt_label)
+
+	bg.visible = false
+	_prompt_label.visible = false
+	_prompt_label.set_meta("bg", bg)
+
+
+func _process(_delta: float) -> void:
+	if _prompt_label == null or player == null:
+		return
+	var bg: ColorRect = _prompt_label.get_meta("bg")
+	var text := ""
+	if not (_busy or Dialogue.is_active() or BattleSystem.is_active()):
+		text = _prompt_for(player.cell + player.facing)
+	_prompt_label.text = text
+	_prompt_label.visible = text != ""
+	bg.visible = text != ""
+
+
+func _prompt_for(cell: Vector2i) -> String:
+	if not objects.has(cell):
+		return ""
+	var obj: Dictionary = objects[cell]
+	var obj_name := String(obj.get("name", ""))
+	match String(obj.get("type", "")):
+		"npc":
+			return "Enter: %s と話す" % obj_name
+		"shop":
+			return "Enter: %s で買い物" % obj_name
+		"inn":
+			return "Enter: %s に泊まる" % obj_name
+		"sign":
+			return "Enter: %s を読む" % obj_name
+		"chest":
+			if GameState.has_flag("chest_opened_" + String(obj.get("id", ""))):
+				return "Enter: 空の宝箱を調べる"
+			return "Enter: 宝箱を開ける"
+		_:
+			return ""
 
 
 func _find_marker_cell(spawn_id: String) -> Vector2i:
@@ -124,23 +203,29 @@ func _trigger_trap_step(obj: Dictionary) -> void:
 	if req_flag != "" and not GameState.has_flag(req_flag):
 		return
 	var id := String(obj.get("id", "trap"))
-	var kind := String(obj.get("kind", "instant_death"))
-	if kind == "battle" and GameState.has_flag("defeated_" + id):
+	var cleared_flag := "trap_cleared_" + id
+	if GameState.has_flag(cleared_flag):
 		return
-	match kind:
+
+	_busy = true
+	match String(obj.get("kind", "instant_death")):
 		"instant_death":
 			GameState.die(id, String(obj.get("message", "")))
 		"battle":
-			var enemy: Dictionary = obj.get("enemy", {})
-			await BattleSystem.start_battle(enemy)
+			var result: String = await BattleSystem.start_battle(obj.get("enemy", {}))
+			# 一度突破した待ち伏せが毎回復活すると、二度と引き返せなくなってしまう。
+			if result == "win" or result == "flee":
+				GameState.set_flag(cleared_flag, true)
 		_:
 			pass
+	_busy = false
 
 
 func _on_player_interact(cell: Vector2i) -> void:
-	if not objects.has(cell):
+	if _busy or not objects.has(cell):
 		return
 	var obj: Dictionary = objects[cell]
+	_busy = true
 	match String(obj.get("type", "")):
 		"npc", "sign":
 			await _show_simple_npc(obj)
@@ -148,8 +233,11 @@ func _on_player_interact(cell: Vector2i) -> void:
 			await _open_chest(obj)
 		"shop":
 			await _open_shop(obj)
+		"inn":
+			await _use_inn(obj)
 		_:
 			pass
+	_busy = false
 
 
 func _show_simple_npc(obj: Dictionary) -> void:
@@ -161,6 +249,7 @@ func _show_simple_npc(obj: Dictionary) -> void:
 	await Dialogue.say_lines(speaker, lines)
 	if join_id != "" and not PartyData.active_party.has(join_id):
 		PartyData.add_member(join_id)
+		await Dialogue.say("", "%s が仲間に加わった!" % speaker)
 
 
 func _open_chest(obj: Dictionary) -> void:
@@ -194,20 +283,40 @@ func _open_chest(obj: Dictionary) -> void:
 
 
 func _open_shop(obj: Dictionary) -> void:
+	var shop_name := String(obj.get("name", "商人"))
 	var wares: Array = obj.get("wares", [])
-	var options: Array = []
-	for w in wares:
-		options.append("%s (%dG)" % [String(w["name"]), int(w["price"])])
-	options.append("やめる")
 	while true:
-		var idx: int = await Dialogue.choice(String(obj.get("greeting", "何か買うか?")), options)
+		var options: Array = []
+		for w in wares:
+			options.append("%s (%dG)" % [String(w["name"]), int(w["price"])])
+		options.append("やめる")
+		var prompt := "%s  所持金: %dG" % [String(obj.get("greeting", "何か買うか?")), PartyData.gold]
+		var idx: int = await Dialogue.choice(prompt, options)
 		if idx < 0 or idx >= wares.size():
 			break
 		var w: Dictionary = wares[idx]
 		if PartyData.gold < int(w["price"]):
-			await Dialogue.say(String(obj.get("name", "商人")), "ゴールドが足りないな。")
+			await Dialogue.say(shop_name, "ゴールドが足りないな。")
 			continue
 		PartyData.add_gold(-int(w["price"]))
 		PartyData.add_item(String(w["item"]), int(w.get("amount", 1)))
-		await Dialogue.say(String(obj.get("name", "商人")), "まいどあり!")
-	await Dialogue.say(String(obj.get("name", "商人")), "またどうぞ。")
+		await Dialogue.say(shop_name, "まいどあり!")
+	await Dialogue.say(shop_name, "またどうぞ。")
+
+
+func _use_inn(obj: Dictionary) -> void:
+	var inn_name := String(obj.get("name", "宿屋"))
+	var price := int(obj.get("price", 5))
+	var idx: int = await Dialogue.choice(
+		"%s 一泊%dG だよ。泊まるかい?  所持金: %dG" % [inn_name, price, PartyData.gold],
+		["泊まる", "やめる"]
+	)
+	if idx != 0:
+		await Dialogue.say(inn_name, "また来ておくれ。")
+		return
+	if PartyData.gold < price:
+		await Dialogue.say(inn_name, "……お代が足りないねぇ。")
+		return
+	PartyData.add_gold(-price)
+	PartyData.heal_full_party()
+	await Dialogue.say("", "ぐっすり眠った。HPとMPが全回復した!")

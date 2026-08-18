@@ -12,7 +12,7 @@ config_version=5
 
 config/name="Bakagame"
 config/description="古き良き探索型王道RPG風バカゲー ― 死んで学ぶ勇者の物語"
-config/version="0.1.0"
+config/version="0.2.0"
 run/main_scene="res://scenes/Title.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
@@ -31,8 +31,11 @@ window/size/viewport_width=320
 window/size/viewport_height=224
 window/size/window_width_override=1280
 window/size/window_height_override=896
-window/stretch/mode="viewport"
+; viewport ではなく canvas_items にすることで、フォントが最終解像度で
+; ラスタライズされ文字がぼやけなくなる。タイルは nearest フィルタのまま拡大される。
+window/stretch/mode="canvas_items"
 window/stretch/aspect="keep"
+window/stretch/scale_mode="integer"
 window/subwindows/embed_subwindows=true
 
 [rendering]

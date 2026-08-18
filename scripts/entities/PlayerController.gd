@@ -6,6 +6,8 @@ signal moved(cell: Vector2i)
 signal interact_pressed(facing_cell: Vector2i)
 
 const MOVE_TIME := 0.11
+const TUNIC := Color("3f6fc4")
+const HAIR := Color("caa14a")
 
 var grid: TileGrid
 var cell: Vector2i
@@ -13,24 +15,14 @@ var facing: Vector2i = Vector2i.DOWN
 var input_locked: bool = false
 
 var _moving: bool = false
-var _body: ColorRect
-var _facing_mark: ColorRect
+var _sprite: Sprite2D
 
 
 func _ready() -> void:
-	_body = ColorRect.new()
-	_body.color = Color(0.3, 0.55, 0.95)
-	_body.size = Vector2(12, 12)
-	_body.position = Vector2(-6, -6)
-	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_body)
-
-	_facing_mark = ColorRect.new()
-	_facing_mark.color = Color(0.95, 0.9, 0.3)
-	_facing_mark.size = Vector2(4, 4)
-	_facing_mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_facing_mark)
-	_update_facing_mark()
+	_sprite = Sprite2D.new()
+	_sprite.centered = true
+	add_child(_sprite)
+	_update_sprite()
 
 
 func setup(p_grid: TileGrid, start_cell: Vector2i) -> void:
@@ -61,12 +53,19 @@ func _process(_delta: float) -> void:
 		return
 
 	facing = dir
-	_update_facing_mark()
+	_update_sprite()
 	_try_move(dir)
 
 
-func _update_facing_mark() -> void:
-	_facing_mark.position = Vector2(facing) * 7 - Vector2(2, 2)
+func _update_sprite() -> void:
+	var dir_name := "down"
+	if facing == Vector2i.UP:
+		dir_name = "up"
+	elif facing == Vector2i.LEFT:
+		dir_name = "left"
+	elif facing == Vector2i.RIGHT:
+		dir_name = "right"
+	_sprite.texture = TileArt.character(dir_name, TUNIC, HAIR)
 
 
 func _try_move(dir: Vector2i) -> void:

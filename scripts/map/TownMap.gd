@@ -2,19 +2,19 @@ extends MapControllerBase
 ## 第1章: 旅立ちの村。セレナが仲間になり、北の道から遺跡(ダンジョン)へ向かう。
 
 const LAYOUT: PackedStringArray = [
-	"##########.#########",
-	"#..................#",
-	"#..................#",
-	"#....##....##......#",
-	"#....##....##......#",
-	"#..................#",
-	"#..................#",
-	"#..................#",
-	"#..................#",
-	"#..................#",
-	"#..................#",
-	"#..................#",
-	"#..................#",
+	"##########,#########",
+	"#.........,........#",
+	"#.RRRR....,..RRRR..#",
+	"#.HDHH....,..HDHH..#",
+	"#.........,........#",
+	"#....#....,...#....#",
+	"#.........,........#",
+	"#.........,........#",
+	"#.RRRR....,..RRRR..#",
+	"#.HDHH....,..HDHH..#",
+	"#.........,........#",
+	"#.........,........#",
+	"#....#....,...#....#",
 	"####################",
 ]
 
@@ -23,7 +23,7 @@ const OBJECTS: Array = [
 	{"type": "marker", "cell": Vector2i(10, 2), "id": "from_dungeon"},
 	{"type": "door", "cell": Vector2i(10, 0), "target_scene": "res://scenes/maps/Dungeon.tscn", "target_spawn": "start"},
 	{
-		"type": "npc", "cell": Vector2i(5, 6), "name": "村長",
+		"type": "npc", "cell": Vector2i(5, 6), "name": "村長", "look": "elder", "solid": true,
 		"lines": [
 			"勇者よ、ついに旅立ちの日じゃな。",
 			"七神教会よりの神託どおり、魔王の復活を止めるのじゃ。",
@@ -33,7 +33,8 @@ const OBJECTS: Array = [
 		],
 	},
 	{
-		"type": "npc", "cell": Vector2i(15, 3), "name": "セレナ", "join_member": "serena",
+		"type": "npc", "cell": Vector2i(14, 4), "name": "セレナ", "look": "priest",
+		"join_member": "serena", "solid": true,
 		"lines": [
 			"勇者様、お待たせいたしました。",
 			"七神教会より、あなたさまの旅への同行を仰せつかりました、セレナ・アルヴェールと申します。",
@@ -45,7 +46,7 @@ const OBJECTS: Array = [
 		],
 	},
 	{
-		"type": "npc", "cell": Vector2i(14, 9), "name": "旅の老婆",
+		"type": "npc", "cell": Vector2i(14, 11), "name": "旅の老婆", "look": "villager", "solid": true,
 		"lines": [
 			"坊や、旅に出るのかい。",
 			"この世界にはね、昔からある妙な仕掛け――「マサ」ってやつがあってね。",
@@ -54,12 +55,16 @@ const OBJECTS: Array = [
 		],
 	},
 	{
-		"type": "shop", "cell": Vector2i(3, 9), "name": "道具屋の主人",
+		"type": "shop", "cell": Vector2i(3, 4), "name": "道具屋", "look": "merchant", "solid": true,
 		"greeting": "いらっしゃい。何か買っていくかい?",
 		"wares": [
 			{"name": "ポーション", "item": "potion", "price": 10, "amount": 1},
 			{"name": "ポーション5個セット", "item": "potion", "price": 45, "amount": 5},
 		],
+	},
+	{
+		"type": "inn", "cell": Vector2i(3, 10), "name": "宿屋", "look": "innkeeper",
+		"solid": true, "price": 5,
 	},
 ]
 
@@ -70,11 +75,3 @@ func _get_layout() -> PackedStringArray:
 
 func _get_objects() -> Array:
 	return OBJECTS
-
-
-func _get_floor_color() -> Color:
-	return Color(0.36, 0.5, 0.3)
-
-
-func _get_wall_color() -> Color:
-	return Color(0.22, 0.18, 0.14)
