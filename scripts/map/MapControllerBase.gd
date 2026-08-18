@@ -26,9 +26,19 @@ const LOOKS := {
 	"innkeeper": {"tunic": Color("9a6a4a"), "hair": Color("4a3020")},
 }
 
+## 仲間の見た目。LOOKS のキーを指す。
+const MEMBER_LOOKS := {
+	"serena": "priest",
+}
+
 var grid: TileGrid
 var player: PlayerController
 var objects: Dictionary = {} # Vector2i -> Dictionary
+
+var followers: Array[FollowerController] = []
+var _object_sprites: Dictionary = {} # Vector2i -> Sprite2D
+## 主人公が直前に踏んだマスの履歴(新しい順)。仲間はこれを順に辿る。
+var _trail: Array[Vector2i] = []
 
 var _prompt_label: Label
 var _busy: bool = false
@@ -68,6 +78,10 @@ func _build_map() -> void:
 
 	objects.clear()
 	for obj in _get_objects():
+		# すでに仲間になった人物は、その場に立ったままにせず主人公に追従させる。
+		var join_id := String(obj.get("join_member", ""))
+		if join_id != "" and PartyData.active_party.has(join_id):
+			continue
 		var cell: Vector2i = obj["cell"]
 		objects[cell] = obj
 		if bool(obj.get("solid", false)):
@@ -102,16 +116,60 @@ func _spawn_object_visual(cell: Vector2i, obj: Dictionary) -> void:
 	spr.centered = true
 	spr.position = grid.cell_to_world(cell)
 	add_child(spr)
+	_object_sprites[cell] = spr
 
 
 func _spawn_player() -> void:
 	var spawn_cell := _find_marker_cell(GameState.checkpoint_spawn_id)
+
+	# 仲間を先に追加して、重なったときに主人公が手前へ描かれるようにする。
+	for member_id in PartyData.active_party:
+		_spawn_follower(member_id, spawn_cell)
+
 	player = PlayerController.new()
 	add_child(player)
 	player.setup(grid, spawn_cell)
 	player.moved.connect(_on_player_moved)
 	player.interact_pressed.connect(_on_player_interact)
+	player.step_started.connect(_on_player_step)
+	PartyData.member_joined.connect(_on_member_joined)
 	_on_player_moved(spawn_cell)
+
+
+func _spawn_follower(member_id: String, at_cell: Vector2i) -> void:
+	if not MEMBER_LOOKS.has(member_id):
+		return # 主人公など、追従させない相手
+	var look: Dictionary = LOOKS[String(MEMBER_LOOKS[member_id])]
+	var f := FollowerController.new()
+	add_child(f)
+	f.setup(grid, at_cell, look["tunic"], look["hair"])
+	followers.append(f)
+
+
+## 仲間になった瞬間から追従を始める。立ち位置に残っていたNPCは消す。
+func _on_member_joined(member_id: String) -> void:
+	if player == null:
+		return
+	for cell in objects.keys():
+		if String(objects[cell].get("join_member", "")) == member_id:
+			if _object_sprites.has(cell):
+				(_object_sprites[cell] as Sprite2D).queue_free()
+				_object_sprites.erase(cell)
+			grid.set_solid(cell, false)
+			objects.erase(cell)
+			break
+	_spawn_follower(member_id, player.cell)
+
+
+func _on_player_step(from_cell: Vector2i, duration: float) -> void:
+	if followers.is_empty():
+		return
+	_trail.push_front(from_cell)
+	if _trail.size() > followers.size():
+		_trail.resize(followers.size())
+	for i in followers.size():
+		if i < _trail.size():
+			followers[i].step_to(_trail[i], duration)
 
 
 ## 目の前の対象が何なのかを画面上部に出す。ドット絵だけでは伝わらない情報を補う。

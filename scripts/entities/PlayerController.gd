@@ -4,6 +4,9 @@ extends Node2D
 
 signal moved(cell: Vector2i)
 signal interact_pressed(facing_cell: Vector2i)
+## 1歩の移動を始めた瞬間に発火する。仲間の追従を主人公と同時に動かすため、
+## 移動完了を待つ moved ではなく開始時に知らせる必要がある。
+signal step_started(from_cell: Vector2i, duration: float)
 
 const MOVE_TIME := 0.11
 const TUNIC := Color("3f6fc4")
@@ -82,8 +85,10 @@ func _try_move(dir: Vector2i) -> void:
 	var target := cell + dir
 	if grid.is_solid(target):
 		return
+	var from_cell := cell
 	_moving = true
 	cell = target
+	step_started.emit(from_cell, MOVE_TIME)
 	var tw := create_tween()
 	tw.tween_property(self, "position", grid.cell_to_world(cell), MOVE_TIME)
 	await tw.finished

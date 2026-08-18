@@ -157,5 +157,48 @@ func _run() -> void:
 	await _press_accept()
 	_check(not dialogue.is_active(), "選択肢がEnterで確定して閉じる")
 
+	# --- 仲間の追従 ---
+	# 先に作った村は別状態なので、独立した状態から作り直して確認する。
+	town.free()
+	PartyData.reset_to_default()
+	town = load("res://scenes/maps/Town.tscn").instantiate()
+	root.add_child(town)
+	current_scene = town
+	await process_frame
+
+	var serena_cell := Vector2i(14, 4)
+	_check(town.followers.is_empty(), "加入前は追従する仲間がいない")
+	_check(town.objects.has(serena_cell), "加入前はセレナが村に立っている")
+
+	PartyData.add_member("serena")
+	await process_frame
+	_check(town.followers.size() == 1, "加入で追従する仲間が1人になる")
+	_check(not town.objects.has(serena_cell), "加入後は立っていたセレナが消える")
+	_check(not town.grid.is_solid(serena_cell), "セレナが立っていたマスを通れる")
+
+	var serena: FollowerController = town.followers[0]
+	_check(serena.cell == town.player.cell, "加入直後は主人公と同じマスにいる")
+
+	# 主人公が1歩進むと、仲間は主人公が直前にいたマスへ入る
+	var before: Vector2i = town.player.cell
+	town.player._try_move(Vector2i.DOWN)
+	await process_frame
+	_check(town.player.cell == before + Vector2i.DOWN, "主人公が1歩進んだ")
+	_check(serena.cell == before, "仲間が主人公の直前のマスへ移動する (実際: %s)" % [serena.cell])
+
+	var before2: Vector2i = town.player.cell
+	town.player._try_move(Vector2i.LEFT)
+	await process_frame
+	_check(serena.cell == before2, "続けて進んでも1歩後ろを保つ (実際: %s)" % [serena.cell])
+
+	# 場面が変わっても追従が引き継がれる
+	town.free()
+	var town2 = load("res://scenes/maps/Town.tscn").instantiate()
+	root.add_child(town2)
+	current_scene = town2
+	await process_frame
+	_check(town2.followers.size() == 1, "場面が変わっても仲間が追従している")
+	_check(not town2.objects.has(serena_cell), "場面が変わってもセレナは村に立っていない")
+
 	print("=== RESULT: %s (失敗 %d件) ===" % ["PASSED" if _fail_count == 0 else "FAILED", _fail_count])
 	_done = true
