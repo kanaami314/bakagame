@@ -131,5 +131,31 @@ func _run() -> void:
 		await process_frame
 	_check(not dialogue.is_active(), "閉じたあと会話が勝手に再開しない")
 
+	# --- 選択肢ウィンドウが会話ウィンドウと重ならないこと ---
+	var opts := ["ポーション (10G)", "ポーション5個セット (45G)", "やめる"]
+	dialogue.choice("いらっしゃい。何か買っていくかい?  所持金: 50G", opts)
+	await process_frame
+	await process_frame
+
+	var msg_rect := Rect2(dialogue.PANEL_POS, dialogue.PANEL_SIZE)
+	var opt_rect := Rect2(dialogue._choice_border.position, dialogue._choice_border.size)
+	var screen := Rect2(Vector2.ZERO, dialogue.SCREEN_SIZE)
+	_check(not msg_rect.intersects(opt_rect),
+		"選択肢が会話ウィンドウと重ならない (会話 %s / 選択肢 %s)" % [msg_rect, opt_rect])
+
+	var msg_frame_top: float = dialogue.PANEL_POS.y - 2.0
+	var gap: float = msg_frame_top - (opt_rect.position.y + opt_rect.size.y)
+	_check(gap >= 2.0, "選択肢と会話ウィンドウの枠が接していない (隙間 %.1fpx)" % gap)
+	_check(screen.encloses(opt_rect), "選択肢ウィンドウが画面内に収まる (%s)" % [opt_rect])
+
+	var longest := 0.0
+	for lbl in dialogue._choice_labels:
+		longest = maxf(longest, lbl.position.x + lbl.get_minimum_size().x)
+	_check(longest <= opt_rect.size.x,
+		"選択肢の文字が枠からはみ出さない (文字端 %.1f / 枠幅 %.1f)" % [longest, opt_rect.size.x])
+
+	await _press_accept()
+	_check(not dialogue.is_active(), "選択肢がEnterで確定して閉じる")
+
 	print("=== RESULT: %s (失敗 %d件) ===" % ["PASSED" if _fail_count == 0 else "FAILED", _fail_count])
 	_done = true
