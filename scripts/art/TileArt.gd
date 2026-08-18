@@ -1,12 +1,39 @@
 class_name TileArt
 extends RefCounted
-## ドット絵をコード内の文字列パターンから生成する。外部アセットに依存しない。
+## 絵の供給元。**差し替え用のPNGがあればそれを使い、無ければ仮のドット絵を生成する。**
 ##
-## 各行の文字はパレットのキーに対応し、パレットに無い文字(空白など)は
-## 「下地の色をそのまま残す」扱いになる。そのため行の長さが多少ずれても
-## 絵が壊れず下地で埋まるだけで済む。
+## 現在コード内に書かれているドット絵はすべて仮アセットである。
+## 本番の絵を用意したら、決められた場所へPNGを置くだけで置き換わる。
+## コードの修正は不要。
+##
+##   タイル・物体  res://assets/tiles/<名前>.png
+##   人物          res://assets/sprites/<look_id>_<向き>.png
+##
+## 命名の詳細と一覧は docs/アセット差し替え.md を参照。
+##
+## 仮アセットの生成方法: 各行の文字がパレットのキーに対応し、パレットに無い文字
+## (空白など)は「下地の色をそのまま残す」扱いになる。そのため行の長さが多少
+## ずれても絵が壊れず下地で埋まるだけで済む。
 
 const SIZE := 16
+
+const TILE_ASSET_DIR := "res://assets/tiles/"
+const CHARACTER_ASSET_DIR := "res://assets/sprites/"
+
+## 人物の見た目。仮アセットではここの色で塗り分ける。
+## 差し替え後はキーが <look_id> としてPNGのファイル名に対応する。
+const LOOKS := {
+	"hero": {"tunic": Color("3f6fc4"), "hair": Color("caa14a")},
+	"priest": {"tunic": Color("e8e8f0"), "hair": Color("c9a24b")},
+	"villager": {"tunic": Color("4aa87a"), "hair": Color("5a4030")},
+	"elder": {"tunic": Color("8a5fb0"), "hair": Color("d8d8e0")},
+	"merchant": {"tunic": Color("d98b3b"), "hair": Color("3a2a1e")},
+	"innkeeper": {"tunic": Color("9a6a4a"), "hair": Color("4a3020")},
+	"king": {"tunic": Color("7a2f8a"), "hair": Color("dcdce4")},
+	"guard": {"tunic": Color("6f7d94"), "hair": Color("3a2f28")},
+	"official": {"tunic": Color("46605a"), "hair": Color("bdbdc6")},
+	"maid": {"tunic": Color("8fb0d4"), "hair": Color("5a4030")},
+}
 
 const PALETTE := {
 	"k": Color("1a1420"), # 輪郭
@@ -37,7 +64,25 @@ const PALETTE := {
 	"B": Color("9a97a8"), # 大理石の影
 }
 
-static var _cache: Dictionary = {} # 名前 -> Image (テクスチャはここから作る)
+static var _image_cache: Dictionary = {}
+static var _texture_cache: Dictionary = {}
+
+
+## 差し替え用アセットが置かれていればそれを返す。無ければ null。
+static func _load_override(path: String) -> Texture2D:
+	if not ResourceLoader.exists(path):
+		return null
+	var res: Resource = load(path)
+	return res as Texture2D
+
+
+## スプライトへ人物の絵を設定する。
+## 差し替え用アセットが16pxより背が高くても、足元がマスの底に揃うようにする。
+static func apply_character_texture(spr: Sprite2D, look_id: String, dir: String) -> void:
+	var tex := character(look_id, dir)
+	spr.texture = tex
+	spr.centered = true
+	spr.offset = Vector2(0, (SIZE - tex.get_height()) * 0.5)
 
 
 ## 文字列パターンから画像を生成する。
@@ -54,41 +99,69 @@ static func make(rows: Array, palette: Dictionary, base: Color) -> Image:
 	return img
 
 
+static func get_texture(art_name: String) -> Texture2D:
+	var key := "tile:" + art_name
+	if _texture_cache.has(key):
+		return _texture_cache[key]
+	var tex := _load_override(TILE_ASSET_DIR + art_name + ".png")
+	if tex == null:
+		tex = ImageTexture.create_from_image(get_image(art_name))
+	_texture_cache[key] = tex
+	return tex
+
+
+## 画像そのものが必要な場合(書き出しツールなど)に使う。
 static func get_image(art_name: String) -> Image:
-	if not _cache.has(art_name):
-		_cache[art_name] = _build(art_name)
-	return _cache[art_name]
-
-
-static func get_texture(art_name: String) -> ImageTexture:
-	return ImageTexture.create_from_image(get_image(art_name))
-
-
-## 人型スプライト。服と髪の色を差し替えて村人・神官などを作り分ける。
-static func character_image(dir: String, tunic: Color, hair: Color = PALETTE["h"]) -> Image:
-	var key := "char_%s_%s_%s" % [dir, tunic.to_html(false), hair.to_html(false)]
-	if _cache.has(key):
-		return _cache[key]
-	var pal := PALETTE.duplicate()
-	pal["b"] = tunic
-	pal["h"] = hair
-	var rows: Array = CHAR_DOWN
-	match dir:
-		"up":
-			rows = CHAR_UP
-		"left":
-			rows = CHAR_SIDE
-		"right":
-			rows = _mirror(CHAR_SIDE)
-		_:
-			rows = CHAR_DOWN
-	var img := make(rows, pal, Color(0, 0, 0, 0))
-	_cache[key] = img
+	var key := "tile:" + art_name
+	if _image_cache.has(key):
+		return _image_cache[key]
+	var override := _load_override(TILE_ASSET_DIR + art_name + ".png")
+	var img: Image = override.get_image() if override != null else _build(art_name)
+	_image_cache[key] = img
 	return img
 
 
-static func character(dir: String, tunic: Color, hair: Color = PALETTE["h"]) -> ImageTexture:
-	return ImageTexture.create_from_image(character_image(dir, tunic, hair))
+## 人物の絵。look_id は LOOKS のキー("hero" "priest" "guard" など)。
+## dir は "down" "up" "left" "right"。
+static func character(look_id: String, dir: String) -> Texture2D:
+	var key := "char:%s:%s" % [look_id, dir]
+	if _texture_cache.has(key):
+		return _texture_cache[key]
+	var tex := _load_override(CHARACTER_ASSET_DIR + look_id + "_" + dir + ".png")
+	if tex == null:
+		tex = ImageTexture.create_from_image(character_image(look_id, dir))
+	_texture_cache[key] = tex
+	return tex
+
+
+static func character_image(look_id: String, dir: String) -> Image:
+	var key := "char:%s:%s" % [look_id, dir]
+	if _image_cache.has(key):
+		return _image_cache[key]
+
+	var override := _load_override(CHARACTER_ASSET_DIR + look_id + "_" + dir + ".png")
+	var img: Image
+	if override != null:
+		img = override.get_image()
+	else:
+		var look: Dictionary = LOOKS.get(look_id, LOOKS["villager"])
+		var pal := PALETTE.duplicate()
+		pal["b"] = look["tunic"]
+		pal["h"] = look["hair"]
+		var rows: Array = CHAR_DOWN
+		match dir:
+			"up":
+				rows = CHAR_UP
+			"left":
+				rows = CHAR_SIDE
+			"right":
+				rows = _mirror(CHAR_SIDE)
+			_:
+				rows = CHAR_DOWN
+		img = make(rows, pal, Color(0, 0, 0, 0))
+
+	_image_cache[key] = img
+	return img
 
 
 static func _mirror(rows: Array) -> Array:

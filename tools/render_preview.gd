@@ -25,7 +25,6 @@ func _render(script_path: String, out_name: String) -> void:
 	var layout: PackedStringArray = map._get_layout()
 	var tileset: Dictionary = map._get_tileset()
 	var objs: Array = map._get_objects()
-	var looks: Dictionary = map.LOOKS
 
 	var w: int = layout[0].length() * 16
 	var h: int = layout.size() * 16
@@ -53,8 +52,7 @@ func _render(script_path: String, out_name: String) -> void:
 			"sign":
 				img = TileArt.get_image("sign")
 			"npc", "shop", "inn":
-				var look: Dictionary = looks.get(String(obj.get("look", "villager")), looks["villager"])
-				img = TileArt.character_image("down", look["tunic"], look["hair"])
+				img = TileArt.character_image(String(obj.get("look", "villager")), "down")
 			_:
 				continue
 		_blend(canvas, img, cell * 16)
@@ -62,7 +60,7 @@ func _render(script_path: String, out_name: String) -> void:
 	# 主人公をスポーン地点に置いて見え方を確認する
 	for obj in objs:
 		if String(obj.get("type", "")) == "marker" and String(obj.get("id", "")) == "start":
-			_blend(canvas, TileArt.character_image("down", Color("3f6fc4"), Color("caa14a")), Vector2i(obj["cell"]) * 16)
+			_blend(canvas, TileArt.character_image("hero", "down"), Vector2i(obj["cell"]) * 16)
 
 	canvas.resize(w * SCALE, h * SCALE, Image.INTERPOLATE_NEAREST)
 	canvas.save_png(OUT_DIR + "/" + out_name)
@@ -71,9 +69,13 @@ func _render(script_path: String, out_name: String) -> void:
 
 ## 全スプライトを並べた確認用シート
 func _render_sheet(out_name: String) -> void:
-	var names := ["grass", "path", "floor", "wall_stone", "pillar", "tree", "house", "roof", "chest", "sign"]
+	var names := [
+		"grass", "path", "floor", "wall_stone", "pillar", "tree",
+		"house", "house_door", "roof", "chest", "sign",
+		"castle_floor", "castle_wall", "carpet", "throne",
+	]
 	var cols := 6
-	var rows: int = ceili(float(names.size() + 5) / float(cols))
+	var rows: int = ceili(float(names.size() + 8) / float(cols))
 	var canvas := Image.create_empty(cols * 20, rows * 20, false, Image.FORMAT_RGBA8)
 	canvas.fill(Color(0.1, 0.1, 0.14))
 
@@ -82,9 +84,11 @@ func _render_sheet(out_name: String) -> void:
 		_blend(canvas, TileArt.get_image(n), Vector2i((i % cols) * 20 + 2, (i / cols) * 20 + 2))
 		i += 1
 	for dir in ["down", "up", "left", "right"]:
-		_blend(canvas, TileArt.character_image(dir, Color("3f6fc4"), Color("caa14a")), Vector2i((i % cols) * 20 + 2, (i / cols) * 20 + 2))
+		_blend(canvas, TileArt.character_image("hero", dir), Vector2i((i % cols) * 20 + 2, (i / cols) * 20 + 2))
 		i += 1
-	_blend(canvas, TileArt.character_image("down", Color("e8e8f0"), Color("c9a24b")), Vector2i((i % cols) * 20 + 2, (i / cols) * 20 + 2))
+	for look_id in ["priest", "king", "guard", "merchant"]:
+		_blend(canvas, TileArt.character_image(look_id, "down"), Vector2i((i % cols) * 20 + 2, (i / cols) * 20 + 2))
+		i += 1
 
 	canvas.resize(canvas.get_width() * 4, canvas.get_height() * 4, Image.INTERPOLATE_NEAREST)
 	canvas.save_png(OUT_DIR + "/" + out_name)

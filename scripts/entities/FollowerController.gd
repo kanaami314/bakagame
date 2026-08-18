@@ -10,15 +10,13 @@ var cell: Vector2i
 var facing: Vector2i = Vector2i.DOWN
 
 var _sprite: Sprite2D
-var _tunic: Color
-var _hair: Color
+var _look_id: String
 
 
-func setup(p_grid: TileGrid, start_cell: Vector2i, tunic: Color, hair: Color) -> void:
+func setup(p_grid: TileGrid, start_cell: Vector2i, look_id: String) -> void:
 	grid = p_grid
 	cell = start_cell
-	_tunic = tunic
-	_hair = hair
+	_look_id = look_id
 	position = grid.cell_to_world(cell)
 
 	_sprite = Sprite2D.new()
@@ -48,4 +46,4 @@ func _update_sprite() -> void:
 		dir_name = "left"
 	elif facing == Vector2i.RIGHT:
 		dir_name = "right"
-	_sprite.texture = TileArt.character(dir_name, _tunic, _hair)
+	TileArt.apply_character_texture(_sprite, _look_id, dir_name)

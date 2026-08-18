@@ -9,8 +9,7 @@ signal interact_pressed(facing_cell: Vector2i)
 signal step_started(from_cell: Vector2i, duration: float)
 
 const MOVE_TIME := 0.11
-const TUNIC := Color("3f6fc4")
-const HAIR := Color("caa14a")
+const LOOK_ID := "hero"
 
 var grid: TileGrid
 var cell: Vector2i
@@ -78,7 +77,7 @@ func _update_sprite() -> void:
 		dir_name = "left"
 	elif facing == Vector2i.RIGHT:
 		dir_name = "right"
-	_sprite.texture = TileArt.character(dir_name, TUNIC, HAIR)
+	TileArt.apply_character_texture(_sprite, LOOK_ID, dir_name)
 
 
 func _try_move(dir: Vector2i) -> void:

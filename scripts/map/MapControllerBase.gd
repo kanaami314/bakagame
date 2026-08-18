@@ -21,20 +21,8 @@ const DEFAULT_TILESET := {
 	"T": {"art": "throne", "solid": true, "under": "c"},
 }
 
-## 人物の見た目(服・髪の色)。objects の "look" キーで指定する。
-const LOOKS := {
-	"villager": {"tunic": Color("4aa87a"), "hair": Color("5a4030")},
-	"elder": {"tunic": Color("8a5fb0"), "hair": Color("d8d8e0")},
-	"priest": {"tunic": Color("e8e8f0"), "hair": Color("c9a24b")},
-	"merchant": {"tunic": Color("d98b3b"), "hair": Color("3a2a1e")},
-	"innkeeper": {"tunic": Color("9a6a4a"), "hair": Color("4a3020")},
-	"king": {"tunic": Color("7a2f8a"), "hair": Color("dcdce4")},
-	"guard": {"tunic": Color("6f7d94"), "hair": Color("3a2f28")},
-	"official": {"tunic": Color("46605a"), "hair": Color("bdbdc6")},
-	"maid": {"tunic": Color("8fb0d4"), "hair": Color("5a4030")},
-}
-
-## 仲間の見た目。LOOKS のキーを指す。
+## 仲間の見た目。TileArt.LOOKS のキー(look_id)を指す。
+## objects 側は "look" キーで直接 look_id を指定する。
 const MEMBER_LOOKS := {
 	"serena": "priest",
 }
@@ -106,23 +94,21 @@ func _setup_camera() -> void:
 
 
 func _spawn_object_visual(cell: Vector2i, obj: Dictionary) -> void:
-	var type := String(obj.get("type", ""))
-	var tex: Texture2D = null
-	match type:
-		"chest":
-			tex = TileArt.get_texture("chest")
-		"sign":
-			tex = TileArt.get_texture("sign")
-		"npc", "shop", "inn":
-			var look: Dictionary = LOOKS.get(String(obj.get("look", "villager")), LOOKS["villager"])
-			tex = TileArt.character("down", look["tunic"], look["hair"])
-		_:
-			return
-
 	var spr := Sprite2D.new()
-	spr.texture = tex
 	spr.centered = true
 	spr.position = grid.cell_to_world(cell)
+
+	match String(obj.get("type", "")):
+		"chest":
+			spr.texture = TileArt.get_texture("chest")
+		"sign":
+			spr.texture = TileArt.get_texture("sign")
+		"npc", "shop", "inn":
+			TileArt.apply_character_texture(spr, String(obj.get("look", "villager")), "down")
+		_:
+			spr.free()
+			return
+
 	add_child(spr)
 	_object_sprites[cell] = spr
 
@@ -147,10 +133,9 @@ func _spawn_player() -> void:
 func _spawn_follower(member_id: String, at_cell: Vector2i) -> void:
 	if not MEMBER_LOOKS.has(member_id):
 		return # 主人公など、追従させない相手
-	var look: Dictionary = LOOKS[String(MEMBER_LOOKS[member_id])]
 	var f := FollowerController.new()
 	add_child(f)
-	f.setup(grid, at_cell, look["tunic"], look["hair"])
+	f.setup(grid, at_cell, String(MEMBER_LOOKS[member_id]))
 	followers.append(f)
 
 

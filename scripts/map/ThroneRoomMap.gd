@@ -82,10 +82,8 @@ func _get_objects() -> Array:
 
 ## セレナは任命の途中で歩み出るため、通常のNPCではなく専用に配置する。
 func _on_ready_extra() -> void:
-	var look: Dictionary = LOOKS["priest"]
 	_serena_sprite = Sprite2D.new()
-	_serena_sprite.texture = TileArt.character("left", look["tunic"], look["hair"])
-	_serena_sprite.centered = true
+	TileArt.apply_character_texture(_serena_sprite, "priest", "left")
 	_serena_sprite.position = grid.cell_to_world(SERENA_START)
 	add_child(_serena_sprite)
 	grid.set_solid(SERENA_START, true)
@@ -127,5 +125,4 @@ func _serena_steps_forward() -> void:
 	var tw := create_tween()
 	tw.tween_property(_serena_sprite, "position", grid.cell_to_world(SERENA_END), 0.7)
 	await tw.finished
-	var look: Dictionary = LOOKS["priest"]
-	_serena_sprite.texture = TileArt.character("down", look["tunic"], look["hair"])
+	TileArt.apply_character_texture(_serena_sprite, "priest", "down")
