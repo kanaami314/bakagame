@@ -19,6 +19,10 @@ const DEFAULT_TILESET := {
 	"C": {"art": "castle_wall", "solid": true},
 	"c": {"art": "carpet", "solid": false, "under": "F"},
 	"T": {"art": "throne", "solid": true, "under": "c"},
+	"p": {"art": "pavement", "solid": false},
+	"f": {"art": "fountain", "solid": true, "under": "p"},
+	"+": {"art": "gate", "solid": true},
+	"A": {"art": "roof_church", "solid": true},
 }
 
 ## 仲間の見た目。TileArt.LOOKS のキー(look_id)を指す。
@@ -61,8 +65,8 @@ func _ready() -> void:
 	if GameState.current_scene_path != path:
 		GameState.set_checkpoint(path, "start")
 	_build_map()
-	_setup_camera()
 	_spawn_player()
+	_attach_camera_to_player()
 	_build_prompt()
 	_on_ready_extra()
 
@@ -85,12 +89,21 @@ func _build_map() -> void:
 		_spawn_object_visual(cell, obj)
 
 
-func _setup_camera() -> void:
+## カメラは主人公の子にして追従させ、マップ端で止まるよう上限を設ける。
+## 画面に収まる小さなマップでは上限で固定されるため、結果的に従来どおり動かない。
+func _attach_camera_to_player() -> void:
+	var px := grid.pixel_size()
 	var cam := Camera2D.new()
-	cam.anchor_mode = Camera2D.ANCHOR_MODE_FIXED_TOP_LEFT
-	cam.position = Vector2.ZERO
-	add_child(cam)
+	cam.anchor_mode = Camera2D.ANCHOR_MODE_DRAG_CENTER
+	cam.limit_left = 0
+	cam.limit_top = 0
+	cam.limit_right = px.x
+	cam.limit_bottom = px.y
+	cam.position_smoothing_enabled = true
+	cam.position_smoothing_speed = 12.0
+	player.add_child(cam)
 	cam.make_current()
+	cam.reset_smoothing()
 
 
 func _spawn_object_visual(cell: Vector2i, obj: Dictionary) -> void:
@@ -186,6 +199,15 @@ func _build_prompt() -> void:
 	bg.visible = false
 	_prompt_label.visible = false
 	_prompt_label.set_meta("bg", bg)
+
+
+## メニューはマップ上でのみ開ける。会話・戦闘・場面演出の最中は開かない。
+func _unhandled_input(event: InputEvent) -> void:
+	if _busy or Menu.is_open() or Dialogue.is_active() or BattleSystem.is_active():
+		return
+	if event.is_action_pressed("ui_cancel"):
+		get_viewport().set_input_as_handled()
+		Menu.open()
 
 
 func _process(_delta: float) -> void:

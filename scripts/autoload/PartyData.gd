@@ -5,13 +5,20 @@ extends Node
 signal member_joined(member_id: String)
 signal gold_changed(new_gold: int)
 signal party_hp_changed()
+signal equipment_changed(member_id: String)
+
+const EQUIP_SLOTS := ["weapon", "armor", "accessory"]
+const SLOT_LABELS := {"weapon": "武器", "armor": "防具", "accessory": "装飾品"}
 
 var gold: int = 50
 var inventory: Dictionary = {} # item_id -> 個数
 
 var members: Dictionary = {}
 var active_party: Array[String] = []
+## member_id -> {weapon/armor/accessory: item_id}。空文字は未装備。
+var equipment: Dictionary = {}
 
+## atk / def は装備を含まない素の値。実際の値は total_atk / total_def で求める。
 const DEFAULT_MEMBERS := {
 	"hero": {
 		"name": "勇者",
@@ -31,6 +38,11 @@ const DEFAULT_MEMBERS := {
 	},
 }
 
+const DEFAULT_EQUIPMENT := {
+	"hero": {"weapon": "traveler_sword", "armor": "cloth_armor", "accessory": ""},
+	"serena": {"weapon": "oak_staff", "armor": "priest_robe", "accessory": ""},
+}
+
 
 func _ready() -> void:
 	reset_to_default()
@@ -42,6 +54,9 @@ func reset_to_default() -> void:
 	members.clear()
 	for id in DEFAULT_MEMBERS.keys():
 		members[id] = DEFAULT_MEMBERS[id].duplicate(true)
+	equipment.clear()
+	for id in DEFAULT_EQUIPMENT.keys():
+		equipment[id] = DEFAULT_EQUIPMENT[id].duplicate(true)
 	active_party = ["hero"]
 
 
@@ -92,6 +107,68 @@ func remove_item(item_id: String, amount: int = 1) -> bool:
 	if inventory[item_id] <= 0:
 		inventory.erase(item_id)
 	return true
+
+
+## ---------------- 装備 ----------------
+
+func equipped(member_id: String, slot: String) -> String:
+	return String(equipment.get(member_id, {}).get(slot, ""))
+
+
+## 装備している品の合計値。stat は "atk" か "def"。
+func equip_bonus(member_id: String, stat: String) -> int:
+	var total := 0
+	for slot in EQUIP_SLOTS:
+		var item_id := equipped(member_id, slot)
+		if item_id != "":
+			total += Items.stat_of(item_id, stat)
+	return total
+
+
+func total_atk(member_id: String) -> int:
+	return int(members.get(member_id, {}).get("atk", 0)) + equip_bonus(member_id, "atk")
+
+
+func total_def(member_id: String) -> int:
+	return int(members.get(member_id, {}).get("def", 0)) + equip_bonus(member_id, "def")
+
+
+## 持ち物の装備品を身につける。外した品は持ち物へ戻る。
+func equip(member_id: String, item_id: String) -> bool:
+	if not Items.is_equipment(item_id) or not Items.can_equip(item_id, member_id):
+		return false
+	if int(inventory.get(item_id, 0)) <= 0:
+		return false
+	var slot := Items.item_type(item_id)
+	var previous := equipped(member_id, slot)
+	remove_item(item_id, 1)
+	if previous != "":
+		add_item(previous, 1)
+	if not equipment.has(member_id):
+		equipment[member_id] = {}
+	equipment[member_id][slot] = item_id
+	equipment_changed.emit(member_id)
+	return true
+
+
+func unequip(member_id: String, slot: String) -> bool:
+	var item_id := equipped(member_id, slot)
+	if item_id == "":
+		return false
+	equipment[member_id][slot] = ""
+	add_item(item_id, 1)
+	equipment_changed.emit(member_id)
+	return true
+
+
+## 持ち物のうち、その仲間がその箇所に装備できるものを列挙する。
+func equippable_items(member_id: String, slot: String) -> Array:
+	var result: Array = []
+	for item_id in inventory.keys():
+		if Items.item_type(item_id) == slot and Items.can_equip(item_id, member_id):
+			result.append(item_id)
+	result.sort()
+	return result
 
 
 func heal_full_party() -> void:

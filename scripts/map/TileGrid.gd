@@ -8,10 +8,16 @@ extends Node2D
 const TILE_SIZE := 16
 
 var solid: Dictionary = {} # Vector2i -> bool
+var size: Vector2i = Vector2i.ZERO # マス単位のマップ全体の大きさ
 var _sprites: Dictionary = {} # Vector2i -> Sprite2D
 
 
 func build(layout: PackedStringArray, tileset: Dictionary) -> void:
+	var width := 0
+	for row in layout:
+		width = maxi(width, row.length())
+	size = Vector2i(width, layout.size())
+
 	for y in layout.size():
 		var row := layout[y]
 		for x in row.length():
@@ -49,3 +55,7 @@ func set_solid(cell: Vector2i, value: bool) -> void:
 
 func cell_to_world(cell: Vector2i) -> Vector2:
 	return Vector2(cell) * TILE_SIZE + Vector2(TILE_SIZE * 0.5, TILE_SIZE * 0.5)
+
+
+func pixel_size() -> Vector2i:
+	return size * TILE_SIZE

@@ -194,10 +194,10 @@ func _player_phase() -> String:
 
 func _do_attack() -> void:
 	var total := 0
-	for m in PartyData.get_active_members():
-		if int(m.get("hp", 0)) <= 0:
+	for id in PartyData.active_party:
+		if int(PartyData.members.get(id, {}).get("hp", 0)) <= 0:
 			continue
-		total += max(1, int(m.get("atk", 1)) - int(_enemy.get("def", 0)))
+		total += max(1, PartyData.total_atk(id) - int(_enemy.get("def", 0)))
 	_enemy["hp"] = max(0, int(_enemy.get("hp", 0)) - total)
 	_refresh_enemy_bar()
 	await _wait_message("全員で攻撃! %d のダメージ!" % total, 1.0)
@@ -273,7 +273,7 @@ func _enemy_phase() -> String:
 
 	var target_id: String = alive_ids[randi() % alive_ids.size()]
 	var target: Dictionary = PartyData.members[target_id]
-	var dmg: int = max(1, int(_enemy.get("atk", 1)) - int(target.get("def", 0)))
+	var dmg: int = max(1, int(_enemy.get("atk", 1)) - PartyData.total_def(target_id))
 	target["hp"] = max(0, int(target.get("hp", 0)) - dmg)
 	_refresh_party_labels()
 	await _wait_message("%s の攻撃! %s に %d のダメージ!" % [String(_enemy.get("name", "敵")), String(target.get("name", "")), dmg], 1.0)

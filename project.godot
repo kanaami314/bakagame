@@ -12,7 +12,7 @@ config_version=5
 
 config/name="Bakagame"
 config/description="古き良き探索型王道RPG風バカゲー ― 死んで学ぶ勇者の物語"
-config/version="0.4.1"
+config/version="0.5.0"
 run/main_scene="res://scenes/Title.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
@@ -25,6 +25,7 @@ PartyData="*res://scripts/autoload/PartyData.gd"
 Dialogue="*res://scripts/autoload/Dialogue.gd"
 NameEntry="*res://scripts/autoload/NameEntry.gd"
 BattleSystem="*res://scripts/autoload/BattleSystem.gd"
+Menu="*res://scripts/autoload/Menu.gd"
 
 [display]
 

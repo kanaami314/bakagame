@@ -4,8 +4,7 @@ extends MapControllerBase
 ## 入口から赤絨毯を歩いて王座へ進むと、オルヴァン王による勇者任命が始まる。
 ## 台詞は docs/プロローグ台詞ドラフト.md に対応する。
 
-## 王都はまだ設計していないため、暫定的に仮組みの村へつないでいる。
-const NEXT_SCENE := "res://scenes/maps/Town.tscn"
+const NEXT_SCENE := "res://scenes/maps/RoyalCapital.tscn"
 
 const KING := "オルヴァン王"
 const SERENA := "セレナ"

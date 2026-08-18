@@ -62,6 +62,12 @@ const PALETTE := {
 	"b": Color("3f6fc4"), # 衣服(既定)
 	"A": Color("c3c0cf"), # 大理石
 	"B": Color("9a97a8"), # 大理石の影
+	"v": Color("8e8a80"), # 石畳
+	"V": Color("6f6b63"), # 石畳の目地
+	"q": Color("4f9fd0"), # 水
+	"Q": Color("2f7bb0"), # 水の影
+	"j": Color("55659a"), # 青い石板屋根
+	"J": Color("3d4a75"), # 青い石板屋根の影
 }
 
 static var _image_cache: Dictionary = {}
@@ -192,6 +198,14 @@ static func _build(art_name: String) -> Image:
 			return make(HOUSE_DOOR, PALETTE, PALETTE["w"])
 		"roof":
 			return make(ROOF, PALETTE, PALETTE["r"])
+		"pavement":
+			return make(PAVEMENT, PALETTE, PALETTE["v"])
+		"fountain":
+			return make(FOUNTAIN, PALETTE, Color(0, 0, 0, 0))
+		"gate":
+			return make(GATE, PALETTE, PALETTE["s"])
+		"roof_church":
+			return make(ROOF_CHURCH, PALETTE, PALETTE["j"])
 		"castle_floor":
 			return make(CASTLE_FLOOR, PALETTE, PALETTE["A"])
 		"castle_wall":
@@ -305,6 +319,67 @@ const PILLAR := [
 	"   eSSSSSSSSe   ",
 	"   eeeeeeeeee   ",
 	"                ",
+]
+
+# ---------------- 街 ----------------
+
+## 石畳。互い違いに目地を入れて敷石らしく見せる。
+const PAVEMENT := [
+	"VVVVVVVVVVVVVVVV",
+	"V      V        ",
+	"V      V        ",
+	"V      V        ",
+	"VVVVVVVVVVVVVVVV",
+	"    V       V   ",
+	"    V       V   ",
+	"    V       V   ",
+	"VVVVVVVVVVVVVVVV",
+	"V      V        ",
+	"V      V        ",
+	"V      V        ",
+	"VVVVVVVVVVVVVVVV",
+	"    V       V   ",
+	"    V       V   ",
+	"    V       V   ",
+]
+
+const FOUNTAIN := [
+	"                ",
+	"                ",
+	"   SSSSSSSSSS   ",
+	"  SSeeeeeeeeSS  ",
+	"  SeqqqqqqqqeS  ",
+	"  SeqqQQQQqqeS  ",
+	"  SeqQQqqQQqeS  ",
+	"  SeqQqqqqQqeS  ",
+	"  SeqQqqqqQqeS  ",
+	"  SeqQQqqQQqeS  ",
+	"  SeqqQQQQqqeS  ",
+	"  SeqqqqqqqqeS  ",
+	"  SSeeeeeeeeSS  ",
+	"   SSSSSSSSSS   ",
+	"                ",
+	"                ",
+]
+
+## 閉ざされた門。落とし格子を下ろした状態。
+const GATE := [
+	"SSSSSSSSSSSSSSSS",
+	"SSSSSSSSSSSSSSSS",
+	"SkkkkkkkkkkkkkkS",
+	"SkWWkWWkWWkWWkkS",
+	"SkWWkWWkWWkWWkkS",
+	"SkkkkkkkkkkkkkkS",
+	"SkWWkWWkWWkWWkkS",
+	"SkWWkWWkWWkWWkkS",
+	"SkkkkkkkkkkkkkkS",
+	"SkWWkWWkWWkWWkkS",
+	"SkWWkWWkWWkWWkkS",
+	"SkkkkkkkkkkkkkkS",
+	"SkWWkWWkWWkWWkkS",
+	"SkWWkWWkWWkWWkkS",
+	"SkkkkkkkkkkkkkkS",
+	"SSSSSSSSSSSSSSSS",
 ]
 
 # ---------------- 城 ----------------
@@ -426,6 +501,26 @@ const HOUSE := [
 	"W              W",
 	"W              W",
 	"WWWWWWWWWWWWWWWW",
+]
+
+## 聖堂の屋根。民家の赤瓦と区別できるよう青い石板にする。
+const ROOF_CHURCH := [
+	"JJJJJJJJJJJJJJJJ",
+	"                ",
+	"                ",
+	"JJJJJJJJJJJJJJJJ",
+	"                ",
+	"                ",
+	"JJJJJJJJJJJJJJJJ",
+	"                ",
+	"                ",
+	"JJJJJJJJJJJJJJJJ",
+	"                ",
+	"                ",
+	"JJJJJJJJJJJJJJJJ",
+	"                ",
+	"                ",
+	"JJJJJJJJJJJJJJJJ",
 ]
 
 const HOUSE_DOOR := [

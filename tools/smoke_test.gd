@@ -8,7 +8,10 @@ extends SceneTree
 ## --script 実行時はオートロードのベア識別子解決が効かないため /root/Name で取得する。
 
 var _done := false
-var _frames := 0
+## ヘッドレスは非常に速く回るため、フレーム数ではなく実時間で打ち切る。
+## フェード演出の待ち時間だけで数千フレーム進んでしまうため。
+var _elapsed := 0.0
+const TIMEOUT_SEC := 90.0
 var _fail_count := 0
 var PartyData: Node
 var GameState: Node
@@ -19,12 +22,14 @@ func _initialize() -> void:
 	_run()
 
 
-func _process(_delta: float) -> bool:
-	_frames += 1
-	if _frames > 900:
+func _process(delta: float) -> bool:
+	if _done:
+		return true
+	_elapsed += delta
+	if _elapsed > TIMEOUT_SEC:
 		print("!!! TIMEOUT !!!")
 		return true
-	return _done
+	return false
 
 
 ## 決定キーの押下と離しを1回ぶん流し込む。
@@ -237,5 +242,74 @@ func _run() -> void:
 
 	hall.free()
 
+	# --- 王都: 全ての施設・住民へ実際に歩いて辿り着けること ---
+	PartyData.reset_to_default()
+	GameState.flags.clear()
+	GameState.set_checkpoint("res://scenes/maps/RoyalCapital.tscn", "start")
+	var cap = load("res://scenes/maps/RoyalCapital.tscn").instantiate()
+	root.add_child(cap)
+	current_scene = cap
+	await process_frame
+
+	_check(cap.grid.size == Vector2i(60, 42), "王都の広さが60x42 (実際: %s)" % [cap.grid.size])
+	_check(not cap.grid.is_solid(cap.player.cell), "出発地点が壁の中でない (%s)" % [cap.player.cell])
+
+	var reachable := _flood_fill(cap.grid, cap.player.cell)
+	_check(reachable.size() > 800, "歩ける範囲が十分に広い (%dマス)" % reachable.size())
+
+	var unreachable: Array = []
+	var interactables := 0
+	for cell in cap.objects.keys():
+		var kind := String(cap.objects[cell].get("type", ""))
+		if not kind in ["npc", "shop", "inn", "sign", "chest"]:
+			continue
+		interactables += 1
+		var ok := false
+		for d in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+			if reachable.has(cell + d):
+				ok = true
+				break
+		if not ok:
+			unreachable.append("%s%s" % [String(cap.objects[cell].get("name", "?")), cell])
+	_check(interactables >= 25, "話せる相手が25以上いる (実際: %d)" % interactables)
+	_check(unreachable.is_empty(), "全員に話しかけられる (届かない相手: %s)" % [unreachable])
+
+	# 城門はどちらも閉ざされていること
+	for gate in [Vector2i(29, 6), Vector2i(30, 6), Vector2i(29, 41), Vector2i(30, 41)]:
+		_check(cap.grid.is_solid(gate), "城門 %s が閉ざされている" % [gate])
+
+	# --- 装備 ---
+	PartyData.add_item("bronze_sword", 1)
+	var atk_before: int = PartyData.total_atk("hero")
+	_check(PartyData.equip("hero", "bronze_sword"), "武器を装備できる")
+	_check(PartyData.total_atk("hero") > atk_before,
+		"装備で攻撃力が上がる (%d → %d)" % [atk_before, PartyData.total_atk("hero")])
+	_check(int(PartyData.inventory.get("traveler_sword", 0)) == 1, "外した武器が持ち物へ戻る")
+	_check(not PartyData.equip("hero", "oak_staff"), "セレナ専用の杖は主人公が装備できない")
+	_check(PartyData.unequip("hero", "weapon"), "武器を外せる")
+	_check(PartyData.total_atk("hero") == int(PartyData.members["hero"]["atk"]),
+		"武器を外すと素の攻撃力に戻る")
+
+	cap.free()
+
 	print("=== RESULT: %s (失敗 %d件) ===" % ["PASSED" if _fail_count == 0 else "FAILED", _fail_count])
 	_done = true
+
+
+## 出発地点から歩いて行ける範囲を求める
+func _flood_fill(grid, from: Vector2i) -> Dictionary:
+	var seen := {from: true}
+	var queue: Array[Vector2i] = [from]
+	while not queue.is_empty():
+		var cur: Vector2i = queue.pop_back()
+		for d in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+			var nxt: Vector2i = cur + d
+			if seen.has(nxt):
+				continue
+			if nxt.x < 0 or nxt.y < 0 or nxt.x >= grid.size.x or nxt.y >= grid.size.y:
+				continue
+			if grid.is_solid(nxt):
+				continue
+			seen[nxt] = true
+			queue.append(nxt)
+	return seen

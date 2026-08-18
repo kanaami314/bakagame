@@ -7,7 +7,7 @@ extends SceneTree
 ## CPU上で合成する(ヘッドレスでは描画サーバーを使えないため)。
 
 const OUT_DIR := "user://preview"
-const SCALE := 3
+const SCALE := 2
 
 
 func _initialize() -> void:
@@ -15,6 +15,7 @@ func _initialize() -> void:
 	_render("res://scripts/map/TownMap.gd", "town.png")
 	_render("res://scripts/map/DungeonMap.gd", "dungeon.png")
 	_render("res://scripts/map/ThroneRoomMap.gd", "throne_room.png")
+	_render("res://scripts/map/RoyalCapitalMap.gd", "royal_capital.png")
 	_render_sheet("sheet.png")
 	print("OUTPUT DIR: ", ProjectSettings.globalize_path(OUT_DIR))
 	quit()
