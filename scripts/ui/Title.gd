@@ -51,4 +51,4 @@ func _process(delta: float) -> void:
 	if Input.is_action_just_pressed("ui_accept"):
 		_started = true
 		GameState.start_new_game()
-		GameState.travel_to("res://scenes/maps/Town.tscn", "start")
+		GameState.travel_to("res://scenes/Prologue.tscn", "start")

@@ -200,5 +200,42 @@ func _run() -> void:
 	_check(town2.followers.size() == 1, "場面が変わっても仲間が追従している")
 	_check(not town2.objects.has(serena_cell), "場面が変わってもセレナは村に立っていない")
 
+	town2.free()
+
+	# --- プロローグ: 謁見の広間 ---
+	PartyData.reset_to_default()
+	GameState.flags.clear()
+	GameState.set_checkpoint("res://scenes/maps/ThroneRoom.tscn", "start")
+	var hall = load("res://scenes/maps/ThroneRoom.tscn").instantiate()
+	root.add_child(hall)
+	current_scene = hall
+	await process_frame
+
+	_check(hall.player.cell == Vector2i(10, 12), "入口(10,12)から始まる (実際: %s)" % [hall.player.cell])
+	_check(hall.grid.is_solid(Vector2i(10, 1)), "王座(10,1)は通れない")
+	_check(hall.grid.is_solid(Vector2i(10, 2)), "国王(10,2)は通れない")
+
+	# 入口から王座前まで、赤絨毯の上を遮られずに歩けること
+	var carpet_blocked: Array = []
+	for y in range(3, 13):
+		if hall.grid.is_solid(Vector2i(10, y)):
+			carpet_blocked.append(y)
+	_check(carpet_blocked.is_empty(), "絨毯(x=10, y=3..12)を歩ける (塞がり: %s)" % [carpet_blocked])
+
+	_check(hall.objects.has(Vector2i(10, 3)), "任命イベントが王座の手前(10,3)にある")
+	var npc_count := 0
+	for cell in hall.objects.keys():
+		if String(hall.objects[cell].get("type", "")) == "npc":
+			npc_count += 1
+	_check(npc_count == 5, "国王と城内の人物あわせて5人 (実際: %d人)" % npc_count)
+
+	# 名前入力が反映され、以降の台詞に使われること
+	var name_entry := root.get_node("NameEntry")
+	PartyData.set_hero_name("テスト勇者")
+	_check(PartyData.hero_name() == "テスト勇者", "入力した名前がパーティへ反映される")
+	_check(name_entry.has_method("ask"), "名前入力ウィンドウが呼び出せる")
+
+	hall.free()
+
 	print("=== RESULT: %s (失敗 %d件) ===" % ["PASSED" if _fail_count == 0 else "FAILED", _fail_count])
 	_done = true

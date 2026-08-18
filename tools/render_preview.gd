@@ -14,6 +14,7 @@ func _initialize() -> void:
 	DirAccess.make_dir_recursive_absolute(OUT_DIR)
 	_render("res://scripts/map/TownMap.gd", "town.png")
 	_render("res://scripts/map/DungeonMap.gd", "dungeon.png")
+	_render("res://scripts/map/ThroneRoomMap.gd", "throne_room.png")
 	_render_sheet("sheet.png")
 	print("OUTPUT DIR: ", ProjectSettings.globalize_path(OUT_DIR))
 	quit()

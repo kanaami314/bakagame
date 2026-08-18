@@ -45,6 +45,15 @@ func reset_to_default() -> void:
 	active_party = ["hero"]
 
 
+func set_hero_name(new_name: String) -> void:
+	if members.has("hero"):
+		members["hero"]["name"] = new_name
+
+
+func hero_name() -> String:
+	return String(members.get("hero", {}).get("name", "勇者"))
+
+
 func add_member(member_id: String) -> void:
 	if not active_party.has(member_id):
 		active_party.append(member_id)

@@ -15,6 +15,10 @@ const DEFAULT_TILESET := {
 	"_": {"art": "floor", "solid": false},
 	"W": {"art": "wall_stone", "solid": true},
 	"P": {"art": "pillar", "solid": true, "under": "_"},
+	"F": {"art": "castle_floor", "solid": false},
+	"C": {"art": "castle_wall", "solid": true},
+	"c": {"art": "carpet", "solid": false, "under": "F"},
+	"T": {"art": "throne", "solid": true, "under": "c"},
 }
 
 ## 人物の見た目(服・髪の色)。objects の "look" キーで指定する。
@@ -24,6 +28,10 @@ const LOOKS := {
 	"priest": {"tunic": Color("e8e8f0"), "hair": Color("c9a24b")},
 	"merchant": {"tunic": Color("d98b3b"), "hair": Color("3a2a1e")},
 	"innkeeper": {"tunic": Color("9a6a4a"), "hair": Color("4a3020")},
+	"king": {"tunic": Color("7a2f8a"), "hair": Color("dcdce4")},
+	"guard": {"tunic": Color("6f7d94"), "hair": Color("3a2f28")},
+	"official": {"tunic": Color("46605a"), "hair": Color("bdbdc6")},
+	"maid": {"tunic": Color("8fb0d4"), "hair": Color("5a4030")},
 }
 
 ## 仲間の見た目。LOOKS のキーを指す。
@@ -252,8 +260,30 @@ func _on_player_moved(cell: Vector2i) -> void:
 			GameState.travel_to(String(obj["target_scene"]), String(obj["target_spawn"]))
 		"trap_step":
 			await _trigger_trap_step(obj)
+		"trigger":
+			await _fire_trigger(obj)
 		_:
 			pass
+
+
+## 特定のマスを踏んだときに物語上の場面を起こす。中身はサブクラスが _run_trigger で書く。
+func _fire_trigger(obj: Dictionary) -> void:
+	var id := String(obj.get("id", ""))
+	var flag := "trigger_fired_" + id
+	if bool(obj.get("once", true)) and GameState.has_flag(flag):
+		return
+	GameState.set_flag(flag, true)
+	_busy = true
+	player.input_locked = true
+	await _run_trigger(id)
+	# 場面転換を伴う場合はここへ戻らないこともある
+	if is_instance_valid(player):
+		player.input_locked = false
+	_busy = false
+
+
+func _run_trigger(_id: String) -> void:
+	pass # サブクラスが実装する
 
 
 func _trigger_trap_step(obj: Dictionary) -> void:

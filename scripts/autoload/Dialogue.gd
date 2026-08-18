@@ -44,6 +44,8 @@ var _waiting_choice := false
 
 func _ready() -> void:
 	layer = 50
+	# 場面転換やカットシーンで停止中でも会話を進められるようにする。
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build_ui()
 	_set_box_visible(false)
 	_set_choice_visible(false)

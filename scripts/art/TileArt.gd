@@ -33,6 +33,8 @@ const PALETTE := {
 	"n": Color("e8c49a"), # 肌
 	"h": Color("6b4a2f"), # 髪
 	"b": Color("3f6fc4"), # 衣服(既定)
+	"A": Color("c3c0cf"), # 大理石
+	"B": Color("9a97a8"), # 大理石の影
 }
 
 static var _cache: Dictionary = {} # 名前 -> Image (テクスチャはここから作る)
@@ -117,6 +119,14 @@ static func _build(art_name: String) -> Image:
 			return make(HOUSE_DOOR, PALETTE, PALETTE["w"])
 		"roof":
 			return make(ROOF, PALETTE, PALETTE["r"])
+		"castle_floor":
+			return make(CASTLE_FLOOR, PALETTE, PALETTE["A"])
+		"castle_wall":
+			return make(CASTLE_WALL, PALETTE, PALETTE["s"])
+		"carpet":
+			return make(CARPET, PALETTE, PALETTE["r"])
+		"throne":
+			return make(THRONE, PALETTE, Color(0, 0, 0, 0))
 		"chest":
 			return make(CHEST, PALETTE, Color(0, 0, 0, 0))
 		"sign":
@@ -222,6 +232,87 @@ const PILLAR := [
 	"   eSSSSSSSSe   ",
 	"   eeeeeeeeee   ",
 	"                ",
+]
+
+# ---------------- 城 ----------------
+
+## 磨かれた大理石の床。遺跡の石床より明るく整った印象にする。
+const CASTLE_FLOOR := [
+	"BBBBBBBBBBBBBBBB",
+	"B       B       ",
+	"B       B       ",
+	"B       B       ",
+	"B       B       ",
+	"B       B       ",
+	"B       B       ",
+	"B       B       ",
+	"BBBBBBBBBBBBBBBB",
+	"B       B       ",
+	"B       B       ",
+	"B       B       ",
+	"B       B       ",
+	"B       B       ",
+	"B       B       ",
+	"B       B       ",
+]
+
+## 城壁。遺跡の壁と同じレンガ積みだが、金の帯を入れて格式を出す。
+const CASTLE_WALL := [
+	"SSSSSSSSSSSSSSSS",
+	"AAAAAAAAAAAAAAAA",
+	"       S        ",
+	"       S        ",
+	"SSSSSSSSSSSSSSSS",
+	"yyyyyyyyyyyyyyyy",
+	"YYYYYYYYYYYYYYYY",
+	"   S        S   ",
+	"SSSSSSSSSSSSSSSS",
+	"AAAAAAAAAAAAAAAA",
+	"       S        ",
+	"       S        ",
+	"SSSSSSSSSSSSSSSS",
+	"AAAAAAAAAAAAAAAA",
+	"   S        S   ",
+	"   S        S   ",
+]
+
+## 赤絨毯。縦に敷き詰めると両脇に金の縁が続いて見える。
+const CARPET := [
+	"yY            Yy",
+	"yY            Yy",
+	"yY            Yy",
+	"yY            Yy",
+	"yY            Yy",
+	"yY            Yy",
+	"yY            Yy",
+	"yY            Yy",
+	"yY            Yy",
+	"yY            Yy",
+	"yY            Yy",
+	"yY            Yy",
+	"yY            Yy",
+	"yY            Yy",
+	"yY            Yy",
+	"yY            Yy",
+]
+
+const THRONE := [
+	"                ",
+	"   kkkkkkkkkk   ",
+	"   kyyyyyyyyk   ",
+	"   kyYYYYYYyk   ",
+	"   kyYrrrrYyk   ",
+	"   kyYrrrrYyk   ",
+	"   kyYrrrrYyk   ",
+	"   kyYrrrrYyk   ",
+	"   kyYYYYYYyk   ",
+	"   kyyyyyyyyk   ",
+	"  kkyrrrrrrykk  ",
+	"  kyyrrrrrryyk  ",
+	"  kyyyyyyyyyyk  ",
+	"  kkkkkkkkkkkk  ",
+	"   kk      kk   ",
+	"   kk      kk   ",
 ]
 
 # ---------------- 建物・自然物 ----------------
