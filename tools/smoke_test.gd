@@ -292,6 +292,29 @@ func _run() -> void:
 
 	cap.free()
 
+	# --- タイトル画面の文字が中央に来ていること ---
+	# 座標を手で決め打ちすると日本語の文字幅とずれるため、実際の描画幅で確かめる。
+	var title_scene = load("res://scenes/Title.tscn").instantiate()
+	root.add_child(title_scene)
+	current_scene = title_scene
+	await process_frame
+
+	var screen_center: float = 320.0 / 2.0
+	var checked := 0
+	for child in title_scene.get_children():
+		if not (child is Label):
+			continue
+		var lbl: Label = child
+		var text_w: float = lbl.get_minimum_size().x
+		var text_left: float = lbl.position.x + (lbl.size.x - text_w) * 0.5
+		var text_center: float = text_left + text_w * 0.5
+		checked += 1
+		_check(absf(text_center - screen_center) <= 1.0,
+			"「%s」が中央にある (中心 %.1f / 画面中心 %.1f)" % [lbl.text, text_center, screen_center])
+	_check(checked == 4, "タイトルの行が4つある (実際: %d)" % checked)
+
+	title_scene.free()
+
 	print("=== RESULT: %s (失敗 %d件) ===" % ["PASSED" if _fail_count == 0 else "FAILED", _fail_count])
 	_done = true
 
