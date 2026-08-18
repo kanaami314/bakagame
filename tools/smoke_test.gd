@@ -27,6 +27,17 @@ func _process(_delta: float) -> bool:
 	return _done
 
 
+## 決定キーの押下と離しを1回ぶん流し込む。
+func _press_accept() -> void:
+	for pressed in [true, false]:
+		var ev := InputEventAction.new()
+		ev.action = "ui_accept"
+		ev.pressed = pressed
+		Input.parse_input_event(ev)
+		await process_frame
+	await process_frame
+
+
 func _check(cond: bool, label: String) -> void:
 	if cond:
 		print("  OK   ", label)
@@ -95,6 +106,30 @@ func _run() -> void:
 
 	var spawn: Vector2i = town._find_marker_cell("from_dungeon")
 	_check(spawn == Vector2i(10, 2), "遺跡からの帰還地点が正しい (実際: %s)" % [spawn])
+
+	# --- 会話がEnter1回ぶんの押下で閉じ、同じ押下で再開しないこと ---
+	# 会話ウィンドウとプレイヤーが同じ押下を二重に消費すると、最終行を閉じた
+	# 瞬間に話しかけ直してしまい会話から抜け出せなくなる。
+	Input.use_accumulated_input = false
+	var dialogue := root.get_node("Dialogue")
+	var elder_cell := Vector2i(5, 6)
+	var elder_lines: int = (town.objects[elder_cell]["lines"] as Array).size()
+
+	town.player.cell = elder_cell + Vector2i.DOWN
+	town.player.position = town.grid.cell_to_world(town.player.cell)
+	town.player.facing = Vector2i.UP
+	await process_frame
+
+	await _press_accept()
+	_check(dialogue.is_active(), "Enterで会話が始まる")
+
+	for i in elder_lines:
+		await _press_accept()
+	_check(not dialogue.is_active(), "最終行のEnterで会話が閉じる(同じ押下で再開しない)")
+
+	for i in 10:
+		await process_frame
+	_check(not dialogue.is_active(), "閉じたあと会話が勝手に再開しない")
 
 	print("=== RESULT: %s (失敗 %d件) ===" % ["PASSED" if _fail_count == 0 else "FAILED", _fail_count])
 	_done = true

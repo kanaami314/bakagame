@@ -31,12 +31,22 @@ func setup(p_grid: TileGrid, start_cell: Vector2i) -> void:
 	position = grid.cell_to_world(cell)
 
 
-func _process(_delta: float) -> void:
+## 決定キーだけはイベントとして受け取る。
+##
+## Input.is_action_just_pressed() はグローバルな入力状態の問い合わせなので、
+## 会話ウィンドウが set_input_as_handled() で消費したキーもそのまま拾えてしまう。
+## その結果、会話の最終行を閉じた同じ押下でもう一度話しかけてしまい、
+## 会話から永久に抜け出せなくなる。_unhandled_input なら消費済みのキーは届かない。
+func _unhandled_input(event: InputEvent) -> void:
 	if _moving or input_locked or Dialogue.is_active() or BattleSystem.is_active():
 		return
-
-	if Input.is_action_just_pressed("ui_accept"):
+	if event.is_action_pressed("ui_accept"):
+		get_viewport().set_input_as_handled()
 		interact_pressed.emit(cell + facing)
+
+
+func _process(_delta: float) -> void:
+	if _moving or input_locked or Dialogue.is_active() or BattleSystem.is_active():
 		return
 
 	var dir := Vector2i.ZERO
